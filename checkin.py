@@ -302,10 +302,8 @@ def _build_notification_message(account_details: list, success_count: int, total
 		if 'quota' in account and 'used' in account:
 			quota = account['quota']
 			used = account['used']
-			remaining = quota - used
-			lines.append(f"   💵 余额: ${quota:.2f}")
-			lines.append(f"   📊 已用: ${used:.2f}")
-			lines.append(f"   💎 剩余: ${remaining:.2f}")
+			lines.append(f"   💎 当前余额: ${quota:.2f}")
+			lines.append(f"   📊 历史消耗: ${used:.2f}")
 		
 		# 错误信息
 		if 'error' in account:
