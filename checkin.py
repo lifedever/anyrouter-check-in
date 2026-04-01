@@ -147,8 +147,6 @@ def get_user_info(client, headers, user_info_url: str):
 					'used_quota': used_quota,
 					'display': f':money: Current balance: ${quota}, Used: ${used_quota}',
 				}
-		print(f'[DEBUG] Response status: {response.status_code}, body: {response.text[:500]}')
-		print(f'[DEBUG] Response headers: {dict(response.headers)}')
 		return {'success': False, 'error': f'Failed to get user info: HTTP {response.status_code}'}
 	except Exception as e:
 		return {'success': False, 'error': f'Failed to get user info: {str(e)[:50]}...'}
