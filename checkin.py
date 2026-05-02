@@ -66,7 +66,7 @@ def parse_cookies(cookies_data):
 	return {}
 
 
-async def get_waf_cookies_with_playwright(account_name: str, login_url: str, required_cookies: list[str], user_cookies: dict | None = None, api_user: str = ''):
+async def get_waf_cookies_with_playwright(account_name: str, login_url: str, required_cookies: list[str], user_cookies: dict | None = None):
 	"""使用 Playwright 获取 WAF cookies（隐私模式）"""
 	print(f'[PROCESSING] {account_name}: Starting browser to get WAF cookies...')
 
@@ -129,22 +129,6 @@ async def get_waf_cookies_with_playwright(account_name: str, login_url: str, req
 
 				print(f'[SUCCESS] {account_name}: Successfully got all WAF cookies')
 
-				try:
-					origin = f'{urlparse(login_url).scheme}://{urlparse(login_url).hostname}'
-					probe = await page.evaluate(
-						"""async ({origin, apiUser}) => {
-							const r = await fetch(origin + '/api/user/self', {
-								headers: { 'New-Api-User': apiUser, 'Accept': 'application/json' },
-								credentials: 'include',
-							});
-							return { status: r.status, body: (await r.text()).slice(0, 300) };
-						}""",
-						{'origin': origin, 'apiUser': api_user},
-					)
-					print(f'[DEBUG] in-browser /api/user/self probe: {probe}')
-				except Exception as e:
-					print(f'[DEBUG] in-browser probe error: {e}')
-
 				await context.close()
 
 				return waf_cookies
@@ -180,13 +164,13 @@ def get_user_info(client, headers, user_info_url: str):
 		return {'success': False, 'error': f'Failed to get user info: {str(e)[:50]}...'}
 
 
-async def prepare_cookies(account_name: str, provider_config, user_cookies: dict, api_user: str = '') -> dict | None:
+async def prepare_cookies(account_name: str, provider_config, user_cookies: dict) -> dict | None:
 	"""准备请求所需的 cookies（可能包含 WAF cookies）"""
 	waf_cookies = {}
 
 	if provider_config.needs_waf_cookies():
 		login_url = f'{provider_config.domain}{provider_config.login_path}'
-		waf_cookies = await get_waf_cookies_with_playwright(account_name, login_url, provider_config.waf_cookie_names, user_cookies, api_user)
+		waf_cookies = await get_waf_cookies_with_playwright(account_name, login_url, provider_config.waf_cookie_names, user_cookies)
 		if not waf_cookies:
 			print(f'[FAILED] {account_name}: Unable to get WAF cookies')
 			return None
@@ -302,7 +286,7 @@ async def check_in_account(account: AccountConfig, account_index: int, app_confi
 		print(f'[FAILED] {account_name}: Invalid configuration format')
 		return False, None
 
-	all_cookies = await prepare_cookies(account_name, provider_config, user_cookies, account.api_user)
+	all_cookies = await prepare_cookies(account_name, provider_config, user_cookies)
 	if not all_cookies:
 		return False, None
 
