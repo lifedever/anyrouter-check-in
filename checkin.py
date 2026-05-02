@@ -66,12 +66,13 @@ def parse_cookies(cookies_data):
 	return {}
 
 
-async def get_waf_cookies_with_playwright(account_name: str, login_url: str, required_cookies: list[str]):
+async def get_waf_cookies_with_playwright(account_name: str, login_url: str, required_cookies: list[str], user_cookies: dict | None = None):
 	"""使用 Playwright 获取 WAF cookies（隐私模式）"""
 	print(f'[PROCESSING] {account_name}: Starting browser to get WAF cookies...')
 
 	async with async_playwright() as p:
 		import tempfile
+		from urllib.parse import urlparse
 
 		with tempfile.TemporaryDirectory() as temp_dir:
 			context = await p.chromium.launch_persistent_context(
@@ -87,6 +88,14 @@ async def get_waf_cookies_with_playwright(account_name: str, login_url: str, req
 					'--no-sandbox',
 				],
 			)
+
+			if user_cookies:
+				host = urlparse(login_url).hostname
+				await context.add_cookies([
+					{'name': k, 'value': v, 'domain': host, 'path': '/'}
+					for k, v in user_cookies.items()
+				])
+				print(f'[INFO] {account_name}: Injected {len(user_cookies)} user cookie(s) before navigation')
 
 			page = await context.new_page()
 
@@ -161,7 +170,7 @@ async def prepare_cookies(account_name: str, provider_config, user_cookies: dict
 
 	if provider_config.needs_waf_cookies():
 		login_url = f'{provider_config.domain}{provider_config.login_path}'
-		waf_cookies = await get_waf_cookies_with_playwright(account_name, login_url, provider_config.waf_cookie_names)
+		waf_cookies = await get_waf_cookies_with_playwright(account_name, login_url, provider_config.waf_cookie_names, user_cookies)
 		if not waf_cookies:
 			print(f'[FAILED] {account_name}: Unable to get WAF cookies')
 			return None
